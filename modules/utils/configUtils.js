@@ -2,6 +2,7 @@
 import last from "lodash/last";
 import merge from "lodash/merge";
 import mergeWith from "lodash/mergeWith";
+import omitBy from "lodash/omitBy";
 import {settings as defaultSettings} from "../config/default";
 import moment from "moment";
 import {normalizeListValues} from "./stuff";
@@ -252,14 +253,20 @@ export const getFieldConfig = (field, config) => {
   if (!fieldConfig)
     return null; //throw new Error("Can't find field " + field + ", please check your config");
 
+  // As a per https://github.com/ukrbublik/react-awesome-query-builder/issues/342, excluding `fieldSettings` from the
+  // merge step *drastically* improves performance when used with fields that have a large list of allowed values.
+  const fieldConfigOmitted = omitBy(fieldConfig, (value, key) => key.includes("fieldSettings"));
+  
   //merge, but don't merge operators (rewrite instead)
   const typeConfig = config.types[fieldConfig.type] || {};
-  let ret = mergeWith({}, typeConfig, fieldConfig || {}, (objValue, srcValue, _key, _object, _source, _stack) => {
+  let ret = mergeWith({}, typeConfig, fieldConfigOmitted || {}, (objValue, srcValue, _key, _object, _source, _stack) => {
     if (Array.isArray(objValue)) {
       return srcValue;
     }
   });
-
+  
+  ret.fieldSettings = fieldConfig.fieldSettings;
+  
   return ret;
 };
 
